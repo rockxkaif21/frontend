@@ -12,6 +12,7 @@ export type Session = {
 type AuthContextValue = {
   session: Session | null;
   login: (payload: { email: string; password: string }) => Promise<Session>;
+  establishSession: (session: Session) => void;
   logout: () => void;
   isLoading: boolean;
 };
@@ -35,10 +36,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const login = async ({ email, password }: { email: string; password: string }) => {
-    const nextSession = await loginRequest({ email, password });
+  const establishSession = (nextSession: Session) => {
     window.localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
     setSession(nextSession);
+  };
+
+  const login = async ({ email, password }: { email: string; password: string }) => {
+    const nextSession = await loginRequest({ email, password });
+    establishSession(nextSession);
     return nextSession;
   };
 
@@ -51,6 +56,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     () => ({
       session,
       login,
+      establishSession,
       logout,
       isLoading
     }),

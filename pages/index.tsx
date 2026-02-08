@@ -1,15 +1,25 @@
+import { useMutation } from "@apollo/client";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { Layout } from "../components/Layout";
 import { useAuth } from "../lib/auth";
+import { LOGIN_MUTATION } from "../lib/graphqlOperations";
+
+type LoginResponse = {
+  login: {
+    email: string;
+    role: "manager" | "store-keeper";
+    name: string;
+  };
+};
 
 const LoginPage = () => {
-  const { login, session, isLoading } = useAuth();
+  const { establishSession, session, isLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginMutation, { loading: isSubmitting }] = useMutation<LoginResponse>(LOGIN_MUTATION);
 
   useEffect(() => {
     if (!isLoading && session) {
@@ -31,14 +41,16 @@ const LoginPage = () => {
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      const nextSession = await login({ email, password });
-      router.push(nextSession.role === "manager" ? "/dashboard" : "/products");
+      const { data } = await loginMutation({ variables: { email, password } });
+      if (!data?.login) {
+        setError("Unable to login.");
+        return;
+      }
+      establishSession(data.login);
+      router.push(data.login.role === "manager" ? "/dashboard" : "/products");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Unable to login.");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -94,7 +106,7 @@ const LoginPage = () => {
           <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700">
             <p className="font-semibold text-slate-600 dark:text-slate-200">Auth Assumptions</p>
             <ul className="mt-2 list-disc space-y-1 pl-4">
-              <li>POST /auth/login is simulated via a mock service.</li>
+              <li>GraphQL mutation <code>login</code> simulates POST /auth/login.</li>
               <li>Session data is stored in localStorage.</li>
               <li>Role-based UI is applied to routing and menus.</li>
             </ul>

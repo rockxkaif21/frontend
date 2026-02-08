@@ -1,9 +1,22 @@
+import { useMutation, useQuery } from "@apollo/client";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { Layout } from "../components/Layout";
 import { Product } from "../data/products";
-import { createProduct, getProducts, updateProduct } from "../lib/mockApi";
 import { useAuth } from "../lib/auth";
+import { CREATE_PRODUCT_MUTATION, GET_PRODUCTS_QUERY, UPDATE_PRODUCT_MUTATION } from "../lib/graphqlOperations";
+
+type ProductsResponse = {
+  products: Product[];
+};
+
+type CreateProductResponse = {
+  createProduct: Product;
+};
+
+type UpdateProductResponse = {
+  updateProduct: Product;
+};
 
 const ProductsPage = () => {
   const { session, isLoading } = useAuth();
@@ -17,16 +30,25 @@ const ProductsPage = () => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const deniedReason = typeof router.query.denied === "string" ? router.query.denied : null;
 
+  const { data } = useQuery<ProductsResponse>(GET_PRODUCTS_QUERY, {
+    skip: !session,
+    fetchPolicy: "no-cache"
+  });
+
+  const [createProductMutation] = useMutation<CreateProductResponse>(CREATE_PRODUCT_MUTATION);
+  const [updateProductMutation] = useMutation<UpdateProductResponse>(UPDATE_PRODUCT_MUTATION);
+
   useEffect(() => {
     if (!isLoading && !session) {
       router.replace("/");
-      return;
-    }
-
-    if (session) {
-      getProducts().then((response) => setProducts(response));
     }
   }, [isLoading, session, router]);
+
+  useEffect(() => {
+    if (data?.products) {
+      setProducts(data.products);
+    }
+  }, [data]);
 
   const summary = useMemo(() => {
     const total = products.length;
@@ -60,25 +82,45 @@ const ProductsPage = () => {
       return;
     }
 
+    if (parsedQuantity < 0 || parsedPrice <= 0) {
+      setFeedback("Quantity must be ≥ 0 and price must be > 0.");
+      return;
+    }
+
     if (editingId) {
-      const updated = await updateProduct(editingId, {
-        name,
-        category,
-        quantity: parsedQuantity,
-        price: parsedPrice
+      const { data: updatedResponse } = await updateProductMutation({
+        variables: {
+          id: editingId,
+          name,
+          category,
+          quantity: parsedQuantity,
+          price: parsedPrice
+        }
       });
+      const updated = updatedResponse?.updateProduct;
+      if (!updated) {
+        setFeedback("Unable to update product.");
+        return;
+      }
       setProducts((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       setFeedback(`Updated ${updated.name}.`);
       resetForm();
       return;
     }
 
-    const created = await createProduct({
-      name,
-      category,
-      quantity: parsedQuantity,
-      price: parsedPrice
+    const { data: createResponse } = await createProductMutation({
+      variables: {
+        name,
+        category,
+        quantity: parsedQuantity,
+        price: parsedPrice
+      }
     });
+    const created = createResponse?.createProduct;
+    if (!created) {
+      setFeedback("Unable to create product.");
+      return;
+    }
 
     setProducts((prev) => [created, ...prev]);
     setFeedback(`Added ${created.name}.`);
@@ -128,7 +170,7 @@ const ProductsPage = () => {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Product Inventory</h2>
-            <p className="muted">GET /products is simulated with a mock service.</p>
+            <p className="muted">GraphQL query <code>products</code> simulates GET /products.</p>
           </div>
           <button type="button" className="button-secondary" disabled={session.role !== "manager"}>
             {session.role === "manager" ? "Export Report" : "Export (Managers only)"}
@@ -176,7 +218,7 @@ const ProductsPage = () => {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Add / Edit Products</h2>
-            <p className="muted">POST /products and PUT /products/{`{id}`} are simulated locally.</p>
+            <p className="muted">GraphQL mutations <code>createProduct</code> and <code>updateProduct</code> simulate POST/PUT APIs.</p>
           </div>
           <span className="text-xs font-semibold text-slate-500">Accessible to Managers & Store Keepers</span>
         </div>
