@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dino Ventures Assignment - YouTube Dataset</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://www.youtube.com/iframe_api"></script>
+  </head>
+  <body>
+    <header class="topbar"><h1>Video Feed</h1></header>
+
+    <main id="feed" class="feed"></main>
+
+    <section id="playerPage" class="player-page hidden" aria-label="Full page player">
+      <div id="playerShell" class="player-shell">
+        <div id="ytPlayer"></div>
+      </div>
+
+      <div class="controls">
+        <button id="backBtn">← Feed</button>
+        <div><span id="currentTime">00:00</span> / <span id="duration">00:00</span></div>
+        <button id="togglePlay">Pause</button>
+        <button id="rewindBtn">-10s</button>
+        <button id="forwardBtn">+10s</button>
+        <input id="seekBar" type="range" min="0" max="100" value="0" />
+      </div>
+
+      <div class="related" id="relatedPanel">
+        <h2>Related in same category</h2>
+        <ul id="relatedList"></ul>
+      </div>
+    </section>
+
+    <aside id="miniPlayer" class="mini-player hidden">
+      <img id="miniThumb" alt="Video preview" />
+      <div>
+        <p id="miniTitle"></p>
+        <div class="mini-actions">
+          <button id="miniToggle">Pause</button>
+          <button id="miniClose">✕</button>
+        </div>
+      </div>
+    </aside>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
